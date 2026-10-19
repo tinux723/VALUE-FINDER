@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Value Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F1;--surface:#FFFFFF;--ink:#14201B;--muted:#5B6B63;--line:#D9E0DA;
+  --pitch:#123F31;--pitch-ink:#EAF2EC;--pitch-muted:#9FC2B0;
+  --amber:#D99112;--amber-soft:#FBEFD2;--risk:#B8433A;--risk-soft:#F6E1DE;--good:#1F7A52;--bookie:#C5CEC8;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow","Segoe UI",Roboto,Arial,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1714;--surface:#16211D;--ink:#E6EDE8;--muted:#9AABA2;--line:#26342E;
+    --pitch:#0A271E;--pitch-ink:#DDEBE2;--pitch-muted:#7FA592;
+    --amber:#F2B33D;--amber-soft:#3A2E12;--risk:#E07A70;--risk-soft:#3A1D1A;--good:#5CC08E;--bookie:#3A4943;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1714;--surface:#16211D;--ink:#E6EDE8;--muted:#9AABA2;--line:#26342E;
+  --pitch:#0A271E;--pitch-ink:#DDEBE2;--pitch-muted:#7FA592;
+  --amber:#F2B33D;--amber-soft:#3A2E12;--risk:#E07A70;--risk-soft:#3A1D1A;--good:#5CC08E;--bookie:#3A4943;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.top{background:var(--pitch);color:var(--pitch-ink);position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;right:-90px;top:-90px;width:260px;height:260px;border:2px solid rgba(255,255,255,.08);border-radius:50%;pointer-events:none}
+.top-inner{max-width:1180px;margin:0 auto;padding:20px 20px 0;position:relative;z-index:1}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.brand h1{font-family:var(--display);font-weight:700;font-size:2.4rem;line-height:1;margin:0}
+.brand p{margin:0;color:var(--pitch-muted);font-size:.95rem}
+.tabs{display:flex;gap:4px;margin-top:18px;overflow-x:auto}
+.tab{background:none;border:0;color:var(--pitch-muted);font-family:var(--display);font-size:1.15rem;font-weight:600;padding:10px 16px 12px;cursor:pointer;border-radius:8px 8px 0 0;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--bg);color:var(--ink)}
+main{max-width:1180px;margin:0 auto;padding:20px}
+.panel[hidden]{display:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+label.f input,label.f select,td select{padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.status{font-size:.9rem;color:var(--muted);margin:0 0 16px;min-height:1.4em}
+.status.err{color:var(--risk)}
+.btn{background:var(--ink);color:var(--bg);border:0;padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:.95rem;color:var(--muted);padding-bottom:8px}
+.grid{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer;width:100%}
+.row:last-child{border-bottom:0}
+.row:hover{background:color-mix(in srgb,var(--line) 35%,transparent)}
+.row[aria-current="true"]{background:color-mix(in srgb,var(--amber-soft) 70%,var(--surface));box-shadow:inset 3px 0 0 var(--amber)}
+.row .league{font-size:.82rem;color:var(--muted);grid-column:1/-1}
+.row .teams{font-family:var(--display);font-weight:600;font-size:1.2rem;line-height:1.15}
+.row .pick{font-size:.86rem;color:var(--muted)}
+.edge{font-family:var(--display);font-weight:700;font-size:1.05rem;padding:2px 9px;border-radius:6px;align-self:center;white-space:nowrap}
+.edge.value{background:var(--amber-soft);box-shadow:inset 0 0 0 1px var(--amber)}
+.edge.thin{color:var(--muted)}
+.edge.none{color:var(--muted);font-weight:500;font-family:var(--body);font-size:.85rem}
+.empty{padding:24px;color:var(--muted)}
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px;min-height:200px}
+.d-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px}
+.d-head h2{font-family:var(--display);font-size:2rem;line-height:1.05;margin:0 0 4px;font-weight:700}
+.d-head .meta{color:var(--muted);font-size:.92rem}
+.conf{align-self:flex-start;font-size:.88rem;padding:4px 10px;border-radius:6px;border:1px solid var(--line)}
+h3{font-family:var(--display);font-weight:600;font-size:1.3rem;margin:22px 0 10px}
+.mkt{display:grid;grid-template-columns:minmax(120px,190px) 1fr 74px 96px;gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.mkt .name{font-weight:600;font-size:.98rem}
+.mkt .name small{display:block;font-weight:400;color:var(--muted);font-size:.82rem}
+.track{position:relative;height:16px;background:color-mix(in srgb,var(--line) 45%,transparent);border-radius:4px}
+.track .imp{position:absolute;left:0;top:0;bottom:0;background:var(--bookie);border-radius:4px 0 0 4px}
+.track .gap{position:absolute;top:0;bottom:0}
+.track .gap.pos{background:var(--amber)}
+.track .gap.neg{background:repeating-linear-gradient(45deg,var(--risk-soft) 0 4px,transparent 4px 8px);box-shadow:inset 0 0 0 1px var(--risk)}
+.track .mdl{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink);border-radius:2px;transform:translateX(-1px)}
+.mkt input{width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-family:var(--display);font-size:1.05rem;text-align:center}
+.mkt .res{text-align:right;font-family:var(--display);font-size:1.05rem;font-weight:600;line-height:1.15}
+.mkt .res small{display:block;font-family:var(--body);font-weight:400;font-size:.78rem;color:var(--muted)}
+.res.pos{color:var(--good)}.res.neg{color:var(--risk)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.84rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-right:5px}
+@media (max-width:560px){.mkt{grid-template-columns:1fr 74px 90px}.mkt .track{grid-column:1/-1;grid-row:2}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:640px){.two{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:.86rem}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.form{font-family:var(--display);font-weight:600;letter-spacing:.12em}
+.form .W{color:var(--good)}.form .L{color:var(--risk)}.form .D{color:var(--muted)}
+.analysis{font-size:1.02rem;max-width:68ch}
+.analysis p{margin:0 0 10px}
+.risk{border-left:3px solid var(--risk);padding:6px 0 6px 12px;max-width:68ch;margin-top:12px}
+.risk strong{color:var(--risk)}
+.weather{display:flex;gap:10px;align-items:flex-start;background:color-mix(in srgb,var(--line) 30%,transparent);border-radius:8px;padding:10px 12px;margin-top:12px;font-size:.94rem}
+.actions{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{font-size:.88rem;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:20px;max-width:760px}
+.card h3{margin-top:0}
+.card p{max-width:68ch}
+.keyrow{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px}
+.keyrow label.f{flex:1;min-width:220px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.stat .v{font-family:var(--display);font-size:1.8rem;font-weight:700;line-height:1.1}
+.stat .l{color:var(--muted);font-size:.88rem}
+.formgrid{display:grid;grid-template-columns:2fr 2fr 1fr 1fr auto;gap:10px;align-items:end}
+@media (max-width:760px){.formgrid{grid-template-columns:1fr 1fr}}
+.scroll{overflow-x:auto}
+.warn{background:var(--risk-soft);border:1px solid var(--risk);border-radius:8px;padding:12px 14px;margin-bottom:16px}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0;font-size:.88rem}
+footer{max-width:1180px;margin:0 auto;padding:10px 20px 30px;color:var(--muted);font-size:.86rem}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <h1>Value Finder</h1>
+      <p>Where the best available odds beat the sharp market's fair price.</p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="matches">Matches</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="log">Bet log</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="settings">Settings</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel" id="p-matches">
+    <div class="controls">
+      <label class="f">Competition<select id="sportSel"><option value="">Add your keys in Settings first</option></select></label>
+      <button class="btn" id="loadBtn">Load odds</button>
+      <label class="toggle"><input type="checkbox" id="valueOnly"> Value only (edge 2%+)</label>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="grid">
+      <div class="list" id="list"><div class="empty">Pick a competition and load its odds. Each load uses 1–2 of your 500 monthly Odds API credits; results are saved for 2 hours so reloading the page is free.</div></div>
+      <article class="detail" id="detail"><p class="hint">Pick a match to see the analysis.</p></article>
+    </div>
+  </section>
+
+  <section class="panel" id="p-log" hidden>
+    <div id="limitWarn"></div>
+    <div class="summary" id="summary"></div>
+    <div class="card" style="max-width:none">
+      <h3>Log a bet</h3>
+      <div class="formgrid">
+        <label class="f">Match<input id="fEvent" placeholder="Arsenal v Brighton"></label>
+        <label class="f">Selection<input id="fSel" placeholder="Arsenal"></label>
+        <label class="f">Odds<input id="fOdds" type="number" step="0.01" min="1.01"></label>
+        <label class="f">Stake ₦<input id="fStake" type="number" step="100" min="0"></label>
+        <button class="btn" id="addBet">Add bet</button>
+      </div>
+      <p class="hint" id="formMsg" style="margin:8px 0 0"></p>
+    </div>
+    <div class="card" style="max-width:none">
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap">
+        <h3 style="margin:0">History</h3>
+        <label class="f">Monthly loss limit ₦<input type="number" id="lossLimit" min="0" step="1000"></label>
+      </div>
+      <div class="scroll"><table id="betTable"></table></div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-settings" hidden>
+    <div class="card">
+      <h3>Your API keys</h3>
+      <p class="hint">Keys are saved only in this browser on this device. They are never written into the page file, so it's safe to host the file publicly.</p>
+      <div class="keyrow"><label class="f">The Odds API key<input id="oddsKey" type="password" autocomplete="off"></label></div>
+      <div class="keyrow"><label class="f">API-Football key<input id="fbKey" type="password" autocomplete="off"></label></div>
+      <div class="keyrow">
+        <button class="btn" id="saveKeys">Save and test keys</button>
+        <button class="btn ghost" id="clearKeys">Remove keys</button>
+      </div>
+      <p class="status" id="keyStatus"></p>
+    </div>
+    <div class="card">
+      <h3>Betting settings</h3>
+      <div class="keyrow">
+        <label class="f">Bankroll ₦<input id="bankroll" type="number" min="0" step="1000"></label>
+        <label class="f">Bookmaker region<select id="region">
+          <option value="eu">Europe: includes Pinnacle (1 credit per market)</option>
+          <option value="eu,uk">Europe and UK: more prices (2 credits per market)</option>
+        </select></label>
+      </div>
+      <p class="hint">Suggested stakes use a quarter of the Kelly formula, capped at 2% of your bankroll.</p>
+    </div>
+    <div class="card">
+      <h3>How the numbers work</h3>
+      <p><strong>Fair chance.</strong> Pinnacle is the sharpest bookmaker in the world: its odds are the market's best estimate of the true chance. The tool removes Pinnacle's margin to get a fair probability for each outcome. If Pinnacle isn't offering the match, it averages all bookmakers instead, which is less reliable.</p>
+      <p><strong>Edge.</strong> The tool finds the best odds any bookmaker is offering and checks whether they pay more than the fair chance deserves. Edge = fair chance × odds − 1. An edge of +4% means that over many such bets you'd expect to gain about 4% of your stakes.</p>
+      <p><strong>Your local bookmaker.</strong> Bet9ja, SportyBet and other Nigerian bookmakers aren't in the data feed. Type their odds into the box on any market to see whether their price has an edge.</p>
+      <p><strong>Match stats.</strong> For football, API-Football adds form, goal averages, head-to-head numbers and its own prediction model as a second opinion. Weather comes from Open-Meteo (free, no key needed).</p>
+    </div>
+  </section>
+</main>
+<footer>For personal analysis only. No model guarantees winning bets. Bet only money you can afford to lose. 18+.</footer>
+
+<script>
+/* ---------- storage ---------- */
+function store(k,v){try{localStorage.setItem('vf_'+k,JSON.stringify(v))}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem('vf_'+k);return v?JSON.parse(v):d}catch(e){return d}}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const naira=n=>'₦'+Math.round(n).toLocaleString('en-NG');
+const pct=x=>(x>=0?'+':'')+(x*100).toFixed(1)+'%';
+
+const st={
+  oddsKey:load('oddsKey',''), fbKey:load('fbKey',''), bankroll:load('bankroll',50000), region:load('region','eu'),
+  sports:[], events:[], sportKey:load('lastSport',''), sel:null, overrides:load('overrides',{}), valueOnly:false,
+  fb:{} // per event id: {status, data, weather}
+};
+
+/* ---------- API helpers ---------- */
+async function oddsApi(path,params={}){
+  const u=new URL('https://api.the-odds-api.com/v4'+path);
+  u.searchParams.set('apiKey',st.oddsKey);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u);
+  const rem=r.headers.get('x-requests-remaining');
+  if(rem!==null) store('creditsLeft',rem);
+  const body=await r.json().catch(()=>null);
+  if(!r.ok) throw new Error((body&&body.message)||('The Odds API returned error '+r.status));
+  return body;
+}
+async function fbApi(path,params={}){
+  const u=new URL('https://v3.football.api-sports.io'+path);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u,{headers:{'x-apisports-key':st.fbKey}});
+  const body=await r.json().catch(()=>null);
+  if(!r.ok||!body) throw new Error('API-Football returned error '+r.status);
+  const errs=body.errors;
+  if(errs && (Array.isArray(errs)?errs.length:Object.keys(errs).length)) throw new Error('API-Football: '+Object.values(errs).join(' '));
+  return body.response;
+}
+function setStatus(msg,err){const s=$('status');s.textContent=msg;s.className='status'+(err?' err':'')}
+function creditsNote(){const c=load('creditsLeft',null);return c!==null?` Odds API credits left this month: ${c}.`:''}
+
+/* ---------- competitions ---------- */
+const GROUPS=['Soccer','Basketball','Tennis'];
+async function loadSports(){
+  if(!st.oddsKey){ $('sportSel').innerHTML='<option value="">Add your keys in Settings first</option>'; return; }
+  let cached=load('sports',null);
+  if(!cached||Date.now()-cached.t>12*3600e3){
+    try{ const s=await oddsApi('/sports'); cached={t:Date.now(),s}; store('sports',cached);}
+    catch(e){ setStatus('Could not load competitions: '+e.message,true); return; }
+  }
+  st.sports=cached.s.filter(s=>s.active&&!s.has_outrights&&GROUPS.includes(s.group));
+  const preferred=['soccer_epl','soccer_spain_la_liga','soccer_italy_serie_a','soccer_germany_bundesliga','soccer_france_ligue_one','soccer_uefa_champs_league','basketball_nba','basketball_euroleague'];
+  st.sports.sort((a,b)=>{const ia=preferred.indexOf(a.key),ib=preferred.indexOf(b.key);return (ia<0?99:ia)-(ib<0?99:ib)||a.title.localeCompare(b.title)});
+  $('sportSel').innerHTML=GROUPS.map(g=>{
+    const items=st.sports.filter(s=>s.group===g); if(!items.length) return '';
+    return `<optgroup label="${g==='Soccer'?'Football':g}">${items.map(s=>`<option value="${s.key}">${esc(s.title)}</option>`).join('')}</optgroup>`;
+  }).join('');
+  if(st.sportKey && st.sports.find(s=>s.key===st.sportKey)) $('sportSel').value=st.sportKey;
+  st.sportKey=$('sportSel').value;
+  const c=load('ev_'+st.sportKey,null);
+  if(c&&Date.now()-c.t<2*3600e3){ processEvents(c.data); setStatus('Showing odds loaded '+ago(c.t)+'.'+creditsNote()); }
+}
+function ago(t){const m=Math.round((Date.now()-t)/60000);return m<1?'just now':m+' min ago'}
+
+/* ---------- odds loading & value maths ---------- */
+async function loadOdds(force){
+  st.sportKey=$('sportSel').value; store('lastSport',st.sportKey);
+  if(!st.sportKey){ setStatus('Add your API keys in Settings first.',true); return; }
+  const c=load('ev_'+st.sportKey,null);
+  if(!force&&c&&Date.now()-c.t<2*3600e3){ processEvents(c.data); setStatus('Showing odds loaded '+ago(c.t)+' (saved, no credits used).'+creditsNote()); return; }
+  const sport=st.sports.find(s=>s.key===st.sportKey);
+  const markets=sport&&sport.group==='Tennis'?'h2h':'h2h,totals';
+  $('loadBtn').disabled=true; setStatus('Loading odds…');
+  try{
+    const data=await oddsApi(`/sports/${st.sportKey}/odds`,{regions:st.region,markets,oddsFormat:'decimal',dateFormat:'iso'});
+    store('ev_'+st.sportKey,{t:Date.now(),data});
+    processEvents(data);
+    setStatus(`Loaded ${data.length} upcoming matches.`+creditsNote());
+  }catch(e){ setStatus('Could not load odds: '+e.message,true); }
+  $('loadBtn').disabled=false;
+}
+
+function analyseMarket(ev,key){
+  // returns {label, outcomes:[{name, point, fair, best, book, nBooks}], source}
+  const books=ev.bookmakers||[];
+  const rows=[]; // {book, outcomes}
+  books.forEach(b=>{const m=(b.markets||[]).find(m=>m.key===key); if(m) rows.push({book:b,m});});
+  if(!rows.length) return null;
+  let point=null;
+  if(key==='totals'){
+    const counts={};
+    rows.forEach(r=>r.m.outcomes.forEach(o=>{counts[o.point]=(counts[o.point]||0)+1}));
+    point=+Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+  }
+  const keep=o=>key!=='totals'||o.point===point;
+  const names=[...new Set(rows.flatMap(r=>r.m.outcomes.filter(keep).map(o=>o.name)))];
+  const complete=rows.filter(r=>names.every(n=>r.m.outcomes.some(o=>o.name===n&&keep(o))));
+  if(!complete.length) return null;
+  const priceOf=(r,n)=>r.m.outcomes.find(o=>o.name===n&&keep(o)).price;
+  const pin=complete.find(r=>r.book.key==='pinnacle');
+  let fair={},source;
+  if(pin){
+    const inv=names.map(n=>1/priceOf(pin,n)), s=inv.reduce((a,b)=>a+b,0);
+    names.forEach((n,i)=>fair[n]=inv[i]/s); source='pinnacle';
+  }else{
+    names.forEach(n=>fair[n]=0);
+    complete.forEach(r=>{const inv=names.map(n=>1/priceOf(r,n)),s=inv.reduce((a,b)=>a+b,0);names.forEach((n,i)=>fair[n]+=inv[i]/s/complete.length)});
+    source='consensus';
+  }
+  const outcomes=names.map(n=>{
+    let best=0,book='';
+    rows.forEach(r=>{const o=r.m.outcomes.find(o=>o.name===n&&keep(o)); if(o&&o.price>best&&r.book.key!=='pinnacle'){best=o.price;book=r.book.title}});
+    if(!best&&pin){best=priceOf(pin,n);book='Pinnacle'}
+    let label=n;
+    if(key==='h2h') label=n==='Draw'?'Draw':n+' win';
+    if(key==='totals') label=n+' '+point+(ev.sport_key.startsWith('soccer')?' goals':' points');
+    return {id:key+':'+n,name:n,label,fair:fair[n],best,book};
+  });
+  return {key,outcomes,source,nBooks:rows.length};
+}
+function processEvents(data){
+  st.events=(data||[]).map(ev=>{
+    const markets=['h2h','totals'].map(k=>analyseMarket(ev,k)).filter(Boolean);
+    return {...ev,markets};
+  }).filter(ev=>ev.markets.length);
+  renderList();
+}
+const oddsFor=(ev,o)=>(st.overrides[ev.id]&&st.overrides[ev.id][o.id])||o.best;
+const edgeOf=(p,odds)=>p*odds-1;
+function stakeFor(p,o){const b=o-1,k=(b*p-(1-p))/b;if(k<=0)return 0;return Math.round(Math.min(k/4,.02)*st.bankroll/100)*100}
+function bestOf(ev){
+  let b={e:-9};
+  ev.markets.forEach(m=>m.outcomes.forEach(o=>{const odds=oddsFor(ev,o),e=edgeOf(o.fair,odds);if(e>b.e)b={e,o,odds}}));
+  return b;
+}
+function badge(e){
+  if(e>=.02) return `<span class="edge value">${pct(e)}</span>`;
+  if(e>0) return `<span class="edge thin">${pct(e)}</span>`;
+  return `<span class="edge none">No value</span>`;
+}
+function when(iso){return new Date(iso).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'})}
+
+/* ---------- rendering ---------- */
+function renderList(){
+  const list=$('list');
+  let v=st.events.filter(ev=>new Date(ev.commence_time)>Date.now()-3*3600e3);
+  if(st.valueOnly) v=v.filter(ev=>bestOf(ev).e>=.02);
+  v.sort((a,b)=>bestOf(b).e-bestOf(a).e);
+  if(!v.length){
+    list.innerHTML=`<div class="empty">${st.events.length?'No matches clear a 2% edge right now. That is normal: most of the time the market is priced correctly. Untick "Value only" to see everything.':'No upcoming matches with odds in this competition. Try another one.'}</div>`;
+    $('detail').innerHTML='<p class="hint">Pick a match to see the analysis.</p>'; return;
+  }
+  if(!v.find(e=>e.id===st.sel)) st.sel=v[0].id;
+  list.innerHTML=v.map(ev=>{const b=bestOf(ev);return `<button class="row" data-id="${ev.id}" aria-current="${ev.id===st.sel}">
+    <span class="league">${esc(ev.sport_title)}, ${when(ev.commence_time)}</span>
+    <span><span class="teams">${esc(ev.home_team)} v ${esc(ev.away_team)}</span><br><span class="pick">${b.e>0?'Best: '+esc(b.o.label)+' @ '+b.odds.toFixed(2):'Fairly priced'}</span></span>
+    ${badge(b.e)}</button>`}).join('');
+  list.querySelectorAll('.row').forEach(r=>r.onclick=()=>{st.sel=r.dataset.id;renderList();if(innerWidth<860)$('detail').scrollIntoView({behavior:'smooth'})});
+  renderDetail();
+}
+function mktRow(ev,o){
+  const odds=oddsFor(ev,o),imp=1/odds,e=edgeOf(o.fair,odds),s=stakeFor(o.fair,odds);
+  const lo=Math.min(o.fair,imp)*100,hi=Math.max(o.fair,imp)*100;
+  const own=st.overrides[ev.id]&&st.overrides[ev.id][o.id];
+  return `<div class="mkt">
+    <div class="name">${esc(o.label)}<small>Fair ${(o.fair*100).toFixed(0)}%, ${own?'your odds':'best: '+esc(o.book)}</small></div>
+    <div class="track" aria-hidden="true"><div class="imp" style="width:${imp*100}%"></div><div class="gap ${o.fair>imp?'pos':'neg'}" style="left:${lo}%;width:${hi-lo}%"></div><div class="mdl" style="left:${o.fair*100}%"></div></div>
+    <input type="number" step="0.01" min="1.01" value="${odds.toFixed(2)}" aria-label="Odds for ${esc(o.label)}" data-o="${esc(o.id)}">
+    <div class="res ${e>0?'pos':'neg'}">${pct(e)}<small>${s?'Stake '+naira(s):'No bet'}</small></div></div>`;
+}
+function writeAnalysis(ev){
+  const b=bestOf(ev), src=ev.markets[0].source, n=ev.markets[0].nBooks, p=[];
+  const h2h=ev.markets.find(m=>m.key==='h2h');
+  if(h2h){
+    const fav=[...h2h.outcomes].sort((a,c)=>c.fair-a.fair)[0];
+    p.push(`${src==='pinnacle'?'The sharp market (Pinnacle)':'The average of '+n+' bookmakers'} makes ${esc(fav.label.replace(' win',''))} the favourite with a ${(fav.fair*100).toFixed(0)}% fair chance${fav.name==='Draw'?'':' of winning'}.`);
+  }
+  if(b.e>=.02) p.push(`The best value is <strong>${esc(b.o.label)} at ${b.odds.toFixed(2)}</strong>${st.overrides[ev.id]&&st.overrides[ev.id][b.o.id]?' (your odds)':' with '+esc(b.o.book)}. Those odds pay ${pct(b.e)} more than the fair chance deserves.`);
+  else if(b.e>0) p.push(`The best price only beats the fair chance by ${pct(b.e)}, too thin to be worth a bet once you allow for errors.`);
+  else p.push('No bookmaker is paying more than the fair price on any market. Skip this one.');
+  const fb=st.fb[ev.id];
+  if(fb&&fb.data){
+    const pr=fb.data.predictions||{};
+    if(pr.percent) p.push(`API-Football's own model gives home ${esc(pr.percent.home)}, draw ${esc(pr.percent.draw)}, away ${esc(pr.percent.away)}.${pr.advice?' Its advice: '+esc(pr.advice)+'.':''}`);
+    if(h2h&&pr.percent){
+      const ap=parseFloat(pr.percent.home)/100, fair=h2h.outcomes.find(o=>o.name===ev.home_team);
+      if(fair&&!isNaN(ap)){const d=ap-fair.fair; if(Math.abs(d)>=.1) p.push(`The two models disagree on ${esc(ev.home_team)} by ${Math.round(Math.abs(d)*100)} points. Trust the market price more: it reflects far more money and information.`); else p.push('Both models broadly agree on the result.');}
+    }
+  }
+  const w=fb&&fb.weather;
+  if(w&&(w.rain>=2||w.wind>=30)) p.push(`Weather: ${w.rain>=2?'heavy rain expected':''}${w.rain>=2&&w.wind>=30?' and ':''}${w.wind>=30?'strong wind':''}, which usually lowers scoring. That supports unders slightly.`);
+  const risks=[];
+  if(b.e>=.08) risks.push('An edge this large usually means team news or lineup changes that the price hasn\'t caught up with, or a bookmaker that will void or limit the bet. Check the news before betting.');
+  if(src!=='pinnacle') risks.push('Pinnacle isn\'t pricing this match, so the fair chance is an average of other bookmakers and is less reliable.');
+  if(n<4) risks.push('Only '+n+' bookmakers are pricing this match. Thin markets are easier to misjudge.');
+  if(!risks.length) risks.push('Prices move as lineups are announced. Recheck the odds shortly before kickoff; if the edge has gone, so has the reason to bet.');
+  return {text:p.map(x=>`<p>${x}</p>`).join(''),risk:risks.join(' ')};
+}
+function formHtml(f){return f?`<span class="form">${esc(f.slice(-5)).split('').map(c=>`<span class="${c}">${c}</span>`).join('')}</span>`:'—'}
+function fbSection(ev){
+  if(!ev.sport_key.startsWith('soccer')) return '';
+  const fb=st.fb[ev.id];
+  if(!st.fbKey) return `<h3>Match stats</h3><p class="hint">Add your API-Football key in Settings to see form, goals and a second prediction.</p>`;
+  if(!fb) return `<h3>Match stats</h3><button class="btn ghost" id="fbLoad">Load form, stats and weather</button> <span class="hint">Uses 1–2 of your 100 daily API-Football requests.</span>`;
+  if(fb.status==='loading') return `<h3>Match stats</h3><p class="hint">Loading…</p>`;
+  if(fb.status==='error') return `<h3>Match stats</h3><p class="status err">${esc(fb.error)}</p>`;
+  const d=fb.data||{}, th=d.teams||{}, cmp=d.comparison||{};
+  const l5=t=>t&&t.last_5&&t.last_5.goals?t.last_5.goals:null;
+  const rowsCmp=[['form','Recent form'],['att','Attack'],['def','Defence'],['h2h','Head-to-head'],['total','Overall']].filter(([k])=>cmp[k]);
+  let w='';
+  if(fb.weather) w=`<div class="weather"><span>🌡</span><div>${fb.weather.city}: ${fb.weather.temp}°C, ${fb.weather.rain} mm rain, wind ${fb.weather.wind} km/h around kickoff.</div></div>`;
+  else if(fb.venue) w=`<p class="hint">Venue: ${esc(fb.venue)}. Weather unavailable.</p>`;
+  return `<div class="two">
+    <div><h3>Form and goals</h3><table><tr><th></th><th>${esc(ev.home_team)}</th><th>${esc(ev.away_team)}</th></tr>
+      <tr><td>League form</td><td>${formHtml(th.home&&th.home.league&&th.home.league.form)}</td><td>${formHtml(th.away&&th.away.league&&th.away.league.form)}</td></tr>
+      <tr><td>Goals for per game (last 5)</td><td>${esc(l5(th.home)?.for?.average??'—')}</td><td>${esc(l5(th.away)?.for?.average??'—')}</td></tr>
+      <tr><td>Goals against per game (last 5)</td><td>${esc(l5(th.home)?.against?.average??'—')}</td><td>${esc(l5(th.away)?.against?.average??'—')}</td></tr></table></div>
+    <div><h3>Strength comparison</h3>${rowsCmp.length?`<table><tr><th></th><th class="num">Home</th><th class="num">Away</th></tr>${rowsCmp.map(([k,l])=>`<tr><td>${l}</td><td class="num">${esc(cmp[k].home)}</td><td class="num">${esc(cmp[k].away)}</td></tr>`).join('')}</table>`:'<p class="hint">Not available.</p>'}</div>
+  </div>${w}`;
+}
+function renderDetail(){
+  const ev=st.events.find(e=>e.id===st.sel),d=$('detail');
+  if(!ev){d.innerHTML='<p class="hint">Pick a match to see the analysis.</p>';return}
+  const b=bestOf(ev), a=writeAnalysis(ev), src=ev.markets[0].source;
+  d.innerHTML=`<div class="d-head"><div><h2>${esc(ev.home_team)} v ${esc(ev.away_team)}</h2><div class="meta">${esc(ev.sport_title)}, ${when(ev.commence_time)} (Lagos time)</div></div>
+    <div class="conf">Fair price from: <b>${src==='pinnacle'?'Pinnacle':'bookmaker average'}</b></div></div>
+    <h3 style="margin-top:0">Fair chance vs best odds</h3>
+    ${ev.markets.map(m=>m.outcomes.map(o=>mktRow(ev,o)).join('')).join('')}
+    <div class="legend"><span><i style="background:var(--bookie)"></i>Chance implied by the odds</span><span><i style="background:var(--ink);width:3px"></i>Fair chance</span><span><i style="background:var(--amber)"></i>Edge in your favour</span><span><i style="background:var(--risk-soft);box-shadow:inset 0 0 0 1px var(--risk)"></i>Bookmaker's advantage</span></div>
+    <p class="hint">Type your own bookmaker's odds into any box to check them.</p>
+    <h3>Analysis</h3><div class="analysis">${a.text}</div>
+    <div class="risk"><strong>What could go wrong.</strong> ${a.risk}</div>
+    ${fbSection(ev)}
+    <div class="actions">${b.e>0?`<button class="btn" id="logBest">Log ${esc(b.o.label)} @ ${b.odds.toFixed(2)}</button>`:''}<button class="btn ghost" id="resetOdds">Reset odds</button></div>`;
+  d.querySelectorAll('.mkt input').forEach(inp=>inp.onchange=()=>{
+    const v=parseFloat(inp.value); if(!(v>1)) return;
+    st.overrides[ev.id]=st.overrides[ev.id]||{}; st.overrides[ev.id][inp.dataset.o]=v; store('overrides',st.overrides); renderList();
+  });
+  $('resetOdds').onclick=()=>{delete st.overrides[ev.id];store('overrides',st.overrides);renderList()};
+  const fbl=$('fbLoad'); if(fbl) fbl.onclick=()=>loadFootball(ev);
+  const lb=$('logBest');
+  if(lb) lb.onclick=()=>{ $('fEvent').value=`${ev.home_team} v ${ev.away_team}`; $('fSel').value=b.o.label; $('fOdds').value=b.odds.toFixed(2); $('fStake').value=stakeFor(b.o.fair,b.odds)||''; showTab('log'); $('fStake').focus(); };
+}
+
+/* ---------- API-Football + weather ---------- */
+const STOP=new Set(['fc','cf','afc','sc','ac','cd','club','de','the','ssc','as','us','calcio','fk','sk','sv','vfb','vfl','tsg','rc','rcd','ud','sd','ca','bc','1','04','05','1899','1900','1907','1909','1910','1913']);
+function norm(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w&&!STOP.has(w))}
+function sameTeam(a,b){
+  const A=norm(a),B=norm(b); if(!A.length||!B.length) return false;
+  const ja=A.join(' '),jb=B.join(' ');
+  if(ja===jb||ja.includes(jb)||jb.includes(ja)) return true;
+  const hit=A.filter(w=>w.length>2&&B.some(x=>x.startsWith(w)||w.startsWith(x))).length;
+  return hit>=1&&hit>=Math.min(A.length,B.length)/2;
+}
+async function loadFootball(ev){
+  st.fb[ev.id]={status:'loading'}; renderDetail();
+  try{
+    const date=new Date(ev.commence_time).toLocaleDateString('en-CA',{timeZone:'Africa/Lagos'});
+    let fx=load('fx_'+date,null);
+    if(!fx||Date.now()-fx.t>6*3600e3){ const r=await fbApi('/fixtures',{date,timezone:'Africa/Lagos'}); fx={t:Date.now(),r}; store('fx_'+date,fx); }
+    const match=fx.r.find(f=>sameTeam(f.teams.home.name,ev.home_team)&&sameTeam(f.teams.away.name,ev.away_team));
+    if(!match) throw new Error('Couldn\'t match this game in API-Football (team names differ, or it isn\'t covered on your plan).');
+    const pred=await fbApi('/predictions',{fixture:match.fixture.id});
+    const venue=match.fixture.venue||{};
+    st.fb[ev.id]={status:'ok',data:pred[0]||{},venue:[venue.name,venue.city].filter(Boolean).join(', ')};
+    if(venue.city) st.fb[ev.id].weather=await getWeather(venue.city,ev.commence_time).catch(()=>null);
+  }catch(e){ st.fb[ev.id]={status:'error',error:e.message}; }
+  renderDetail();
+}
+async function getWeather(city,iso){
+  const g=await (await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(city.split(',')[0]))).json();
+  const loc=g.results&&g.results[0]; if(!loc) return null;
+  const day=iso.slice(0,10);
+  const w=await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=temperature_2m,precipitation,wind_speed_10m&timezone=UTC&start_date=${day}&end_date=${day}`)).json();
+  const h=new Date(iso).getUTCHours(), i=Math.min(h,(w.hourly&&w.hourly.time.length-1)||0);
+  if(!w.hourly) return null;
+  const rain=[0,1,2].map(k=>w.hourly.precipitation[i+k]||0).reduce((a,b)=>a+b,0);
+  return {city:loc.name,temp:Math.round(w.hourly.temperature_2m[i]),rain:+rain.toFixed(1),wind:Math.round(w.hourly.wind_speed_10m[i])};
+}
+
+/* ---------- settings ---------- */
+$('oddsKey').value=st.oddsKey; $('fbKey').value=st.fbKey; $('bankroll').value=st.bankroll; $('region').value=st.region;
+$('saveKeys').onclick=async()=>{
+  st.oddsKey=$('oddsKey').value.trim(); st.fbKey=$('fbKey').value.trim();
+  store('oddsKey',st.oddsKey); store('fbKey',st.fbKey);
+  const ks=$('keyStatus'), out=[];
+  ks.className='status'; ks.textContent='Testing keys…';
+  if(st.oddsKey){ try{ const s=await oddsApi('/sports'); store('sports',{t:Date.now(),s}); out.push('The Odds API key works.'+creditsNote()); }catch(e){ out.push('The Odds API key failed: '+e.message); } }
+  if(st.fbKey){ try{ const r=await fbApi('/status'); const req=r&&r.requests; out.push('API-Football key works'+(req?` (${req.current} of ${req.limit_day} requests used today).`:'.')); }catch(e){ out.push('API-Football key failed: '+e.message); } }
+  ks.textContent=out.join(' ')||'Enter at least one key.';
+  ks.className='status'+(out.some(x=>x.includes('failed'))?' err':'');
+  loadSports();
+};
+$('clearKeys').onclick=()=>{st.oddsKey=st.fbKey='';store('oddsKey','');store('fbKey','');$('oddsKey').value=$('fbKey').value='';$('keyStatus').textContent='Keys removed from this browser.'};
+$('bankroll').onchange=()=>{st.bankroll=parseFloat($('bankroll').value)||0;store('bankroll',st.bankroll);renderList()};
+$('region').onchange=()=>{st.region=$('region').value;store('region',st.region)};
+
+/* ---------- bet log ---------- */
+let bets=load('bets',[]), lossLimit=load('lossLimit',20000);
+const plOf=b=>b.r==='won'?b.stake*(b.odds-1):b.r==='lost'?-b.stake:0;
+function renderLog(){
+  const settled=bets.filter(b=>b.r!=='pending'), staked=settled.reduce((a,b)=>a+b.stake,0), pl=settled.reduce((a,b)=>a+plOf(b),0), won=settled.filter(b=>b.r==='won').length;
+  const now=new Date(), ym=now.getFullYear()+'-'+now.getMonth(), monthPL=settled.filter(b=>b.m===ym).reduce((a,b)=>a+plOf(b),0);
+  $('summary').innerHTML=[[naira(pl),'Profit / loss'],[staked?pct(pl/staked):'—','Return on stakes'],[settled.length?Math.round(won/settled.length*100)+'%':'—','Hit rate'],[bets.length,'Bets logged']].map(s=>`<div class="stat"><div class="v">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('');
+  $('limitWarn').innerHTML=(lossLimit>0&&-monthPL>=lossLimit)?`<div class="warn"><strong>You've reached this month's loss limit of ${naira(lossLimit)}.</strong> Stop betting until next month.</div>`:'';
+  const t=$('betTable');
+  if(!bets.length){t.innerHTML='<tr><td class="hint">No bets yet.</td></tr>';return}
+  t.innerHTML='<tr><th>Match</th><th>Selection</th><th class="num">Odds</th><th class="num">Stake</th><th>Result</th><th class="num">P/L</th><th></th></tr>'+bets.map((b,i)=>`<tr><td>${esc(b.ev)}</td><td>${esc(b.sel)}</td><td class="num">${b.odds.toFixed(2)}</td><td class="num">${naira(b.stake)}</td><td><select data-i="${i}" aria-label="Result">${['pending','won','lost','void'].map(r=>`<option value="${r}"${b.r===r?' selected':''}>${r[0].toUpperCase()+r.slice(1)}</option>`).join('')}</select></td><td class="num">${b.r==='pending'?'—':naira(plOf(b))}</td><td><button class="linkbtn" data-del="${i}">Remove</button></td></tr>`).join('');
+  t.querySelectorAll('select').forEach(s=>s.onchange=()=>{bets[s.dataset.i].r=s.value;store('bets',bets);renderLog()});
+  t.querySelectorAll('[data-del]').forEach(x=>x.onclick=()=>{bets.splice(+x.dataset.del,1);store('bets',bets);renderLog()});
+}
+$('addBet').onclick=()=>{
+  const ev=$('fEvent').value.trim(),sel=$('fSel').value.trim(),o=parseFloat($('fOdds').value),s=parseFloat($('fStake').value);
+  if(!ev||!sel||!(o>1)||!(s>0)){$('formMsg').textContent='Fill in the match, selection, odds above 1.00 and a stake.';return}
+  const now=new Date(); bets.unshift({ev,sel,odds:o,stake:s,r:'pending',m:now.getFullYear()+'-'+now.getMonth()});
+  store('bets',bets); ['fEvent','fSel','fOdds','fStake'].forEach(i=>$(i).value=''); $('formMsg').textContent='Bet added.'; renderLog();
+};
+$('lossLimit').value=lossLimit; $('lossLimit').onchange=()=>{lossLimit=parseFloat($('lossLimit').value)||0;store('lossLimit',lossLimit);renderLog()};
+
+/* ---------- tabs & start ---------- */
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));
+  ['matches','log','settings'].forEach(p=>$('p-'+p).hidden=p!==t);
+  if(t==='log') renderLog();
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+$('loadBtn').onclick=()=>loadOdds(false);
+$('sportSel').onchange=()=>{st.sportKey=$('sportSel').value;store('lastSport',st.sportKey);st.sel=null;const c=load('ev_'+st.sportKey,null);if(c&&Date.now()-c.t<2*3600e3){processEvents(c.data);setStatus('Showing odds loaded '+ago(c.t)+'.'+creditsNote())}else{st.events=[];renderList();setStatus('Press "Load odds" to fetch this competition.')}};
+$('valueOnly').onchange=e=>{st.valueOnly=e.target.checked;renderList()};
+if(!st.oddsKey){ showTab('settings'); $('keyStatus').textContent='Start here: paste your two API keys and press "Save and test keys".'; }
+loadSports();
+</script>
+</body>
+</html>
