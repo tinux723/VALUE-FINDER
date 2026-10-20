@@ -121,6 +121,24 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .scroll{overflow-x:auto}
 .warn{background:var(--risk-soft);border:1px solid var(--risk);border-radius:8px;padding:12px 14px;margin-bottom:16px}
 .linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0;font-size:.88rem}
+.tip{display:inline-flex;align-items:center;gap:6px;font-size:.88rem;margin-top:2px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.dot.safe{background:var(--good)}.dot.value{background:var(--amber)}.dot.skip{background:var(--bookie)}
+.chance{font-family:var(--display);font-weight:700;font-size:1.05rem;padding:2px 9px;border-radius:6px;align-self:center;white-space:nowrap;box-shadow:inset 0 0 0 1px var(--line)}
+.chance.safe{background:color-mix(in srgb,var(--good) 14%,var(--surface));box-shadow:inset 0 0 0 1px var(--good)}
+.chance.value{background:var(--amber-soft);box-shadow:inset 0 0 0 1px var(--amber)}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:6px}
+.pickcard{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--bg)}
+.pickcard.safe{border-color:var(--good);box-shadow:inset 3px 0 0 var(--good)}
+.pickcard.value{border-color:var(--amber);box-shadow:inset 3px 0 0 var(--amber)}
+.pickcard .k{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.pickcard .b{font-family:var(--display);font-weight:700;font-size:1.45rem;line-height:1.1;margin:4px 0}
+.pickcard .n{font-size:.9rem;color:var(--muted)}
+.pickcard .why{font-size:.92rem;margin-top:8px}
+.opts td input{width:78px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-family:var(--display);font-size:1rem;text-align:center}
+.opts .grp td{font-family:var(--display);font-weight:600;color:var(--muted);padding-top:14px;font-size:1rem}
+.verdict{font-size:.86rem;white-space:nowrap}.verdict.pos{color:var(--good);font-weight:600}.verdict.neg{color:var(--risk)}
+details.more{margin-top:18px}details.more summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:1.2rem}
 footer{max-width:1180px;margin:0 auto;padding:10px 20px 30px;color:var(--muted);font-size:.86rem}
 </style>
 </head>
@@ -129,7 +147,7 @@ footer{max-width:1180px;margin:0 auto;padding:10px 20px 30px;color:var(--muted);
   <div class="top-inner">
     <div class="brand">
       <h1>Value Finder</h1>
-      <p>Where the best available odds beat the sharp market's fair price.</p>
+      <p>The smartest way to bet on each game: a safe pick, a value pick and a goals view.</p>
     </div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-tab="matches">Matches</button>
@@ -144,7 +162,8 @@ footer{max-width:1180px;margin:0 auto;padding:10px 20px 30px;color:var(--muted);
     <div class="controls">
       <label class="f">Competition<select id="sportSel"><option value="">Add your keys in Settings first</option></select></label>
       <button class="btn" id="loadBtn">Load odds</button>
-      <label class="toggle"><input type="checkbox" id="valueOnly"> Value only (edge 2%+)</label>
+      <label class="f">Sort by<select id="sortSel"><option value="safe">Safest pick first</option><option value="value">Biggest value first</option><option value="time">Kick-off time</option></select></label>
+      <label class="toggle"><input type="checkbox" id="valueOnly"> Hide games with no strong bet</label>
     </div>
     <p class="status" id="status"></p>
     <div class="grid">
@@ -203,6 +222,7 @@ footer{max-width:1180px;margin:0 auto;padding:10px 20px 30px;color:var(--muted);
       <h3>How the numbers work</h3>
       <p><strong>Fair chance.</strong> Pinnacle is the sharpest bookmaker in the world: its odds are the market's best estimate of the true chance. The tool removes Pinnacle's margin to get a fair probability for each outcome. If Pinnacle isn't offering the match, it averages all bookmakers instead, which is less reliable.</p>
       <p><strong>Edge.</strong> The tool finds the best odds any bookmaker is offering and checks whether they pay more than the fair chance deserves. Edge = fair chance × odds − 1. An edge of +4% means that over many such bets you'd expect to gain about 4% of your stakes.</p>
+      <p><strong>Picks.</strong> For each game the tool lists every common bet: result, double chance, both teams to score and over/under 1.5, 2.5 and 3.5 goals. Result and the main goals line come straight from the sharp market. The rest come from a goals model: it works out how many goals each team is expected to score from those same prices, then calculates every other market from that. A <strong>Safe pick</strong> is the likeliest bet with a 65–84% chance (odds about 1.20–1.55). A <strong>Value pick</strong> is a likely bet (40%+) where a bookmaker pays at least 2% more than fair. The <strong>Goals view</strong> is the strongest BTTS or over/under lean.</p>
       <p><strong>Your local bookmaker.</strong> Bet9ja, SportyBet and other Nigerian bookmakers aren't in the data feed. Type their odds into the box on any market to see whether their price has an edge.</p>
       <p><strong>Match stats.</strong> For football, API-Football adds form, goal averages, head-to-head numbers and its own prediction model as a second opinion. Weather comes from Open-Meteo (free, no key needed).</p>
     </div>
@@ -332,7 +352,7 @@ function analyseMarket(ev,key){
 function processEvents(data){
   st.events=(data||[]).map(ev=>{
     const markets=['h2h','totals'].map(k=>analyseMarket(ev,k)).filter(Boolean);
-    return {...ev,markets};
+    const e={...ev,markets}; e.goals=markets.length?fitGoals(e):null; return e;
   }).filter(ev=>ev.markets.length);
   renderList();
 }
@@ -349,23 +369,128 @@ function badge(e){
   if(e>0) return `<span class="edge thin">${pct(e)}</span>`;
   return `<span class="edge none">No value</span>`;
 }
+/* ---------- goals model (football) ---------- */
+// Poisson score model fitted to the sharp market's fair 1X2 and over/under prices.
+const MAXG=10;
+function pmf(l){const a=[Math.exp(-l)];for(let k=1;k<=MAXG;k++)a.push(a[k-1]*l/k);return a}
+function scoreProbs(lh,la){
+  const a=pmf(lh),b=pmf(la);let H=0,D=0,A=0;const tot=new Array(2*MAXG+1).fill(0);let bothScore=0;
+  for(let i=0;i<=MAXG;i++)for(let j=0;j<=MAXG;j++){const p=a[i]*b[j];if(i>j)H+=p;else if(i===j)D+=p;else A+=p;tot[i+j]+=p;if(i>0&&j>0)bothScore+=p}
+  const s=H+D+A;return {H:H/s,D:D/s,A:A/s,tot:tot.map(x=>x/s),btts:bothScore/s};
+}
+const pOverLine=(tot,line)=>tot.reduce((acc,p,g)=>acc+(g>line?p:0),0);
+function fitGoals(ev){
+  if(!ev.sport_key.startsWith('soccer')) return null;
+  const h2h=ev.markets.find(m=>m.key==='h2h'); if(!h2h) return null;
+  const f=n=>(h2h.outcomes.find(o=>o.name===n)||{}).fair;
+  const pH=f(ev.home_team),pA=f(ev.away_team); if(pH==null||pA==null) return null;
+  const tm=ev.markets.find(m=>m.key==='totals');
+  let line=null,pOver=null;
+  if(tm){const ov=tm.outcomes.find(o=>o.name==='Over');if(ov){line=parseFloat(ov.label.split(' ')[1]);pOver=ov.fair}}
+  const err=(lh,la)=>{const s=scoreProbs(lh,la);let e=(s.H-pH)**2+(s.A-pA)**2;
+    e+= pOver!=null&&!isNaN(line)?(pOverLine(s.tot,line)-pOver)**2:0.002*(lh+la-2.6)**2; return e};
+  let best={e:9,lh:1.3,la:1.1};
+  for(let lh=0.2;lh<=4.01;lh+=0.05)for(let la=0.2;la<=4.01;la+=0.05){const e=err(lh,la);if(e<best.e)best={e,lh,la}}
+  const c=best;for(let lh=c.lh-0.05;lh<=c.lh+0.05;lh+=0.01)for(let la=c.la-0.05;la<=c.la+0.05;la+=0.01){if(lh<=0||la<=0)continue;const e=err(lh,la);if(e<best.e)best={e,lh,la}}
+  const s=scoreProbs(best.lh,best.la);
+  return {lh:best.lh,la:best.la,s,line,pOver};
+}
+
+/* ---------- betting options and picks ---------- */
+function optionsFor(ev){
+  // every sensible bet on this game with its fair chance and any odds we have
+  const out=[], h2h=ev.markets.find(m=>m.key==='h2h'), tm=ev.markets.find(m=>m.key==='totals');
+  const add=(grp,id,label,p,feed)=>{if(p==null||isNaN(p))return;const own=st.overrides[ev.id]&&st.overrides[ev.id][id];
+    const odds=own||(feed?oddsFor(ev,feed):null);out.push({grp,id,label,p,odds,own:!!own,book:own?'your odds':feed?feed.book:'',feed})};
+  if(h2h){
+    h2h.outcomes.forEach(o=>add('Result',o.id,o.label,o.fair,o));
+    const pf=n=>(h2h.outcomes.find(o=>o.name===n)||{}).fair, pH=pf(ev.home_team),pA=pf(ev.away_team),pD=pf('Draw');
+    if(pD!=null){
+      add('Double chance','dc:1X',ev.home_team+' or draw',pH+pD);
+      add('Double chance','dc:X2',ev.away_team+' or draw',pA+pD);
+      add('Double chance','dc:12',ev.home_team+' or '+ev.away_team+' (no draw)',pH+pA);
+    }
+  }
+  const g=ev.goals;
+  if(g){
+    add('Both teams to score','btts:yes','Both teams to score: Yes',g.s.btts);
+    add('Both teams to score','btts:no','Both teams to score: No',1-g.s.btts);
+    [1.5,2.5,3.5].forEach(L=>{
+      const feedO=tm&&tm.outcomes.find(o=>o.name==='Over'&&o.label.includes(' '+L+' ')), feedU=tm&&tm.outcomes.find(o=>o.name==='Under'&&o.label.includes(' '+L+' '));
+      const po=feedO?feedO.fair:pOverLine(g.s.tot,L);
+      add('Goals',feedO?feedO.id:'ou:o'+L,'Over '+L+' goals',po,feedO);
+      add('Goals',feedU?feedU.id:'ou:u'+L,'Under '+L+' goals',1-po,feedU);
+    });
+  }else if(tm){ tm.outcomes.forEach(o=>add('Goals / points',o.id,o.label,o.fair,o)); }
+  out.forEach(o=>{o.fairOdds=1/o.p;o.edge=o.odds?edgeOf(o.p,o.odds):null});
+  return out;
+}
+function picksFor(ev){
+  const opts=optionsFor(ev);
+  const ok=o=>o.edge==null||o.edge>=-0.04; // skip a price that's clearly too short
+  // Safe: likely but still worth betting (odds roughly 1.20–1.55)
+  const pool=opts.filter(o=>o.id!=='dc:12'&&ok(o));
+  let safe=pool.filter(o=>o.p>=0.65&&o.p<=0.84).sort((a,b)=>b.p-a.p)[0];
+  let tier='safe';
+  if(!safe){safe=pool.filter(o=>o.p>=0.55&&o.p<=0.84).sort((a,b)=>b.p-a.p)[0];tier=safe?'lean':'skip'}
+  const value=opts.filter(o=>o.edge!=null&&o.edge>=0.02&&o.p>=0.40).sort((a,b)=>b.edge-a.edge)[0]||null;
+  let goals=null;
+  const by=id=>opts.find(o=>o.id===id);
+  if(ev.goals){
+    const notSafe=o=>!safe||o.id!==safe.id;
+    const y=by('btts:yes'), n=by('btts:no');
+    goals=y.p>=0.58?y:n.p>=0.58?n:null;
+    const ov=opts.filter(o=>o.grp==='Goals'&&o.p>=0.6&&o.p<=0.82&&ok(o)&&notSafe(o)).sort((a,b)=>b.p-a.p)[0];
+    if(!goals||(ov&&ov.p>goals.p))goals=ov||goals;
+  }
+  return {opts,safe,tier,value,goals};
+}
+function reasonFor(ev,o){
+  const g=ev.goals, r=[];
+  const h2h=ev.markets.find(m=>m.key==='h2h');
+  const fav=h2h?[...h2h.outcomes].sort((a,b)=>b.fair-a.fair)[0]:null;
+  if(o.grp==='Double chance'&&fav&&fav.name!=='Draw') r.push(`${esc(fav.name)} wins ${Math.round(fav.fair*100)}% of the time; adding the draw covers you if they slip up.`);
+  else if(o.grp==='Result') r.push(`The sharp market rates this ${Math.round(o.p*100)}% likely.`);
+  if(g&&(o.grp==='Both teams to score'||o.grp==='Goals')){
+    r.push(`Expected goals: ${esc(ev.home_team)} ${g.lh.toFixed(1)}, ${esc(ev.away_team)} ${g.la.toFixed(1)} (about ${(g.lh+g.la).toFixed(1)} in total).`);
+    if(o.id==='btts:yes') r.push(Math.min(g.lh,g.la)>=1?'Both sides expect to score at least once.':'The weaker side is the risk here.');
+    if(o.id==='btts:no') r.push(`${esc(g.lh<g.la?ev.home_team:ev.away_team)} may struggle to score.`);
+  }
+  const fb=st.fb[ev.id]; const t=fb&&fb.data&&fb.data.teams;
+  if(t&&t.home&&t.away){const gf=x=>x&&x.last_5&&x.last_5.goals?x.last_5.goals:null;const h=gf(t.home),a=gf(t.away);
+    if(h&&a) r.push(`Last 5: ${esc(ev.home_team)} scores ${esc(h.for.average)} and concedes ${esc(h.against.average)} per game; ${esc(ev.away_team)} ${esc(a.for.average)} and ${esc(a.against.average)}.`);}
+  if(o.edge!=null) r.push(o.edge>=0?`Best price ${o.odds.toFixed(2)} (${esc(o.book)}) beats the fair price by ${pct(o.edge)}.`:`Best price ${o.odds.toFixed(2)} is a little short of fair (${pct(o.edge)}).`);
+  else r.push(`Take it only at <strong>${minOdds(o)}</strong> or better.`);
+  return r.join(' ');
+}
+const minOdds=o=>(Math.ceil(o.fairOdds*1.02*100)/100).toFixed(2);
+const tierScore=k=>k.tier==='safe'?2:k.tier==='lean'?1:0;
+
 function when(iso){return new Date(iso).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'})}
 
 /* ---------- rendering ---------- */
 function renderList(){
   const list=$('list');
-  let v=st.events.filter(ev=>new Date(ev.commence_time)>Date.now()-3*3600e3);
-  if(st.valueOnly) v=v.filter(ev=>bestOf(ev).e>=.02);
-  v.sort((a,b)=>bestOf(b).e-bestOf(a).e);
+  let v=st.events.filter(ev=>new Date(ev.commence_time)>Date.now()-3*3600e3).map(ev=>({ev,k:picksFor(ev)}));
+  if(st.valueOnly) v=v.filter(x=>x.k.tier==='safe'||x.k.value);
+  const sort=$('sortSel').value;
+  if(sort==='value') v.sort((a,b)=>((b.k.value&&b.k.value.edge)||-1)-((a.k.value&&a.k.value.edge)||-1));
+  else if(sort==='time') v.sort((a,b)=>new Date(a.ev.commence_time)-new Date(b.ev.commence_time));
+  else v.sort((a,b)=>tierScore(b.k)-tierScore(a.k)||((b.k.safe&&b.k.safe.p)||0)-((a.k.safe&&a.k.safe.p)||0));
   if(!v.length){
-    list.innerHTML=`<div class="empty">${st.events.length?'No matches clear a 2% edge right now. That is normal: most of the time the market is priced correctly. Untick "Value only" to see everything.':'No upcoming matches with odds in this competition. Try another one.'}</div>`;
+    list.innerHTML=`<div class="empty">${st.events.length?'No game has a strong bet right now. Untick "Hide games with no strong bet" to see everything.':'No upcoming matches with odds in this competition. Try another one.'}</div>`;
     $('detail').innerHTML='<p class="hint">Pick a match to see the analysis.</p>'; return;
   }
-  if(!v.find(e=>e.id===st.sel)) st.sel=v[0].id;
-  list.innerHTML=v.map(ev=>{const b=bestOf(ev);return `<button class="row" data-id="${ev.id}" aria-current="${ev.id===st.sel}">
+  if(!v.find(x=>x.ev.id===st.sel)) st.sel=v[0].ev.id;
+  list.innerHTML=v.map(({ev,k})=>{
+    const s=k.safe, tier=k.tier==='safe'?'safe':k.value?'value':'skip';
+    const shown=k.tier==='safe'?s:k.value||s;
+    const line=shown?`<span class="tip"><span class="dot ${tier}"></span>${esc(shown.label)}${shown.odds?' @ '+shown.odds.toFixed(2):''}</span>`:'<span class="tip"><span class="dot skip"></span>No strong bet</span>';
+    const extra=k.tier==='safe'&&k.value?`<br><span class="tip"><span class="dot value"></span>Value: ${esc(k.value.label)} @ ${k.value.odds.toFixed(2)}</span>`:'';
+    return `<button class="row" data-id="${ev.id}" aria-current="${ev.id===st.sel}">
     <span class="league">${esc(ev.sport_title)}, ${when(ev.commence_time)}</span>
-    <span><span class="teams">${esc(ev.home_team)} v ${esc(ev.away_team)}</span><br><span class="pick">${b.e>0?'Best: '+esc(b.o.label)+' @ '+b.odds.toFixed(2):'Fairly priced'}</span></span>
-    ${badge(b.e)}</button>`}).join('');
+    <span><span class="teams">${esc(ev.home_team)} v ${esc(ev.away_team)}</span><br>${line}${extra}</span>
+    <span class="chance ${tier}">${shown?Math.round(shown.p*100)+'%':'—'}</span></button>`}).join('');
   list.querySelectorAll('.row').forEach(r=>r.onclick=()=>{st.sel=r.dataset.id;renderList();if(innerWidth<860)$('detail').scrollIntoView({behavior:'smooth'})});
   renderDetail();
 }
@@ -386,9 +511,11 @@ function writeAnalysis(ev){
     const fav=[...h2h.outcomes].sort((a,c)=>c.fair-a.fair)[0];
     p.push(`${src==='pinnacle'?'The sharp market (Pinnacle)':'The average of '+n+' bookmakers'} makes ${esc(fav.label.replace(' win',''))} the favourite with a ${(fav.fair*100).toFixed(0)}% fair chance${fav.name==='Draw'?'':' of winning'}.`);
   }
-  if(b.e>=.02) p.push(`The best value is <strong>${esc(b.o.label)} at ${b.odds.toFixed(2)}</strong>${st.overrides[ev.id]&&st.overrides[ev.id][b.o.id]?' (your odds)':' with '+esc(b.o.book)}. Those odds pay ${pct(b.e)} more than the fair chance deserves.`);
-  else if(b.e>0) p.push(`The best price only beats the fair chance by ${pct(b.e)}, too thin to be worth a bet once you allow for errors.`);
-  else p.push('No bookmaker is paying more than the fair price on any market. Skip this one.');
+  const k=picksFor(ev);
+  if(k.safe) p.push(`${k.tier==='safe'?'Safest':'Likeliest'} sensible bet: <strong>${esc(k.safe.label)}</strong>, ${Math.round(k.safe.p*100)}% likely.`);
+  if(k.value) p.push(`Best value: <strong>${esc(k.value.label)} at ${k.value.odds.toFixed(2)}</strong>${k.value.own?' (your odds)':' with '+esc(k.value.book)}, ${pct(k.value.edge)} above the fair price.`);
+  else p.push('No bookmaker in the feed is overpaying on a likely outcome, so check your own bookmaker\'s prices against the "Min odds" column.');
+  if(b.e>=.08&&b.o.fair<0.25) p.push(`${esc(b.o.label)} at ${b.odds.toFixed(2)} looks generous on paper (${pct(b.e)}), but it only lands about ${Math.max(1,Math.round(b.o.fair*100))}% of the time. Leave long shots alone.`);
   const fb=st.fb[ev.id];
   if(fb&&fb.data){
     const pr=fb.data.predictions||{};
@@ -401,7 +528,7 @@ function writeAnalysis(ev){
   const w=fb&&fb.weather;
   if(w&&(w.rain>=2||w.wind>=30)) p.push(`Weather: ${w.rain>=2?'heavy rain expected':''}${w.rain>=2&&w.wind>=30?' and ':''}${w.wind>=30?'strong wind':''}, which usually lowers scoring. That supports unders slightly.`);
   const risks=[];
-  if(b.e>=.08) risks.push('An edge this large usually means team news or lineup changes that the price hasn\'t caught up with, or a bookmaker that will void or limit the bet. Check the news before betting.');
+  if(k.value&&k.value.edge>=.08) risks.push('An edge this large usually means team news or lineup changes that the price hasn\'t caught up with, or a bookmaker that will void or limit the bet. Check the news before betting.');
   if(src!=='pinnacle') risks.push('Pinnacle isn\'t pricing this match, so the fair chance is an average of other bookmakers and is less reliable.');
   if(n<4) risks.push('Only '+n+' bookmakers are pricing this match. Thin markets are easier to misjudge.');
   if(!risks.length) risks.push('Prices move as lineups are announced. Recheck the odds shortly before kickoff; if the edge has gone, so has the reason to bet.');
@@ -432,25 +559,42 @@ function fbSection(ev){
 function renderDetail(){
   const ev=st.events.find(e=>e.id===st.sel),d=$('detail');
   if(!ev){d.innerHTML='<p class="hint">Pick a match to see the analysis.</p>';return}
-  const b=bestOf(ev), a=writeAnalysis(ev), src=ev.markets[0].source;
+  const b=bestOf(ev), a=writeAnalysis(ev), src=ev.markets[0].source, k=picksFor(ev);
+  const card=(cls,title,o,note)=>o?`<div class="pickcard ${cls}"><div class="k">${title}</div><div class="b">${esc(o.label)}</div>
+    <div class="n">${Math.round(o.p*100)}% chance · ${o.odds?'odds '+o.odds.toFixed(2)+(o.own?' (yours)':' ('+esc(o.book)+')'):'take at '+minOdds(o)+'+'}</div>
+    <div class="why">${reasonFor(ev,o)}</div></div>`:`<div class="pickcard"><div class="k">${title}</div><div class="b">None</div><div class="n">${note}</div></div>`;
+  const cards=card(k.tier==='safe'?'safe':'',k.tier==='lean'?'Lean (not quite safe)':'Safe pick',k.safe,'No option is likely enough to call safe.')
+    +card('value','Value pick',k.value,'No bookmaker in the feed is overpaying on a likely outcome.')
+    +(ev.goals?card('','Goals view',k.goals,'No other strong goals bet on this game.'):'');
+  let grp='';
+  const optRows=k.opts.map(o=>{
+    const head=o.grp!==grp?`<tr class="grp"><td colspan="5">${esc(o.grp)}</td></tr>`:''; grp=o.grp;
+    const v=o.edge==null?`<span class="verdict">Enter your odds</span>`:o.p<0.25?`<span class="verdict">Long shot, skip</span>`:o.edge>=0.02?`<span class="verdict pos">Good price ${pct(o.edge)}</span>`:o.edge>=0?`<span class="verdict">Fair ${pct(o.edge)}</span>`:`<span class="verdict neg">Too short ${pct(o.edge)}</span>`;
+    return head+`<tr><td>${esc(o.label)}</td><td class="num">${Math.round(o.p*100)}%</td><td class="num">${minOdds(o)}</td>
+      <td class="num"><input type="number" step="0.01" min="1.01" value="${o.odds?o.odds.toFixed(2):''}" placeholder="—" aria-label="Odds for ${esc(o.label)}" data-o="${esc(o.id)}"></td><td>${v}</td></tr>`}).join('');
+  const logTarget=k.tier==='safe'?k.safe:k.value||k.safe;
   d.innerHTML=`<div class="d-head"><div><h2>${esc(ev.home_team)} v ${esc(ev.away_team)}</h2><div class="meta">${esc(ev.sport_title)}, ${when(ev.commence_time)} (Lagos time)</div></div>
     <div class="conf">Fair price from: <b>${src==='pinnacle'?'Pinnacle':'bookmaker average'}</b></div></div>
-    <h3 style="margin-top:0">Fair chance vs best odds</h3>
-    ${ev.markets.map(m=>m.outcomes.map(o=>mktRow(ev,o)).join('')).join('')}
-    <div class="legend"><span><i style="background:var(--bookie)"></i>Chance implied by the odds</span><span><i style="background:var(--ink);width:3px"></i>Fair chance</span><span><i style="background:var(--amber)"></i>Edge in your favour</span><span><i style="background:var(--risk-soft);box-shadow:inset 0 0 0 1px var(--risk)"></i>Bookmaker's advantage</span></div>
-    <p class="hint">Type your own bookmaker's odds into any box to check them.</p>
+    <h3 style="margin-top:0">How to bet on this game</h3>
+    <div class="picks">${cards}</div>
+    <h3>All betting options</h3>
+    <div class="scroll"><table class="opts"><tr><th>Bet</th><th class="num">Chance</th><th class="num">Min odds</th><th class="num">Odds</th><th></th></tr>${optRows}</table></div>
+    <p class="hint">"Min odds" is the lowest price worth taking. Type what Bet9ja, SportyBet or your bookmaker is paying into the Odds box: if it's at or above the minimum, it's a fair bet.</p>
     <h3>Analysis</h3><div class="analysis">${a.text}</div>
     <div class="risk"><strong>What could go wrong.</strong> ${a.risk}</div>
     ${fbSection(ev)}
-    <div class="actions">${b.e>0?`<button class="btn" id="logBest">Log ${esc(b.o.label)} @ ${b.odds.toFixed(2)}</button>`:''}<button class="btn ghost" id="resetOdds">Reset odds</button></div>`;
-  d.querySelectorAll('.mkt input').forEach(inp=>inp.onchange=()=>{
+    <details class="more"><summary>Market detail (fair chance vs best odds)</summary>
+    ${ev.markets.map(m=>m.outcomes.map(o=>mktRow(ev,o)).join('')).join('')}
+    <div class="legend"><span><i style="background:var(--bookie)"></i>Chance implied by the odds</span><span><i style="background:var(--ink);width:3px"></i>Fair chance</span><span><i style="background:var(--amber)"></i>Edge in your favour</span><span><i style="background:var(--risk-soft);box-shadow:inset 0 0 0 1px var(--risk)"></i>Bookmaker's advantage</span></div></details>
+    <div class="actions">${logTarget?`<button class="btn" id="logBest">Log ${esc(logTarget.label)}${logTarget.odds?' @ '+logTarget.odds.toFixed(2):''}</button>`:''}<button class="btn ghost" id="resetOdds">Reset odds</button></div>`;
+  d.querySelectorAll('.opts input,.mkt input').forEach(inp=>inp.onchange=()=>{
     const v=parseFloat(inp.value); if(!(v>1)) return;
     st.overrides[ev.id]=st.overrides[ev.id]||{}; st.overrides[ev.id][inp.dataset.o]=v; store('overrides',st.overrides); renderList();
   });
   $('resetOdds').onclick=()=>{delete st.overrides[ev.id];store('overrides',st.overrides);renderList()};
   const fbl=$('fbLoad'); if(fbl) fbl.onclick=()=>loadFootball(ev);
   const lb=$('logBest');
-  if(lb) lb.onclick=()=>{ $('fEvent').value=`${ev.home_team} v ${ev.away_team}`; $('fSel').value=b.o.label; $('fOdds').value=b.odds.toFixed(2); $('fStake').value=stakeFor(b.o.fair,b.odds)||''; showTab('log'); $('fStake').focus(); };
+  if(lb) lb.onclick=()=>{ const t=logTarget; $('fEvent').value=`${ev.home_team} v ${ev.away_team}`; $('fSel').value=t.label; $('fOdds').value=t.odds?t.odds.toFixed(2):''; $('fStake').value=t.odds?(stakeFor(t.p,t.odds)||''):''; showTab('log'); (t.odds?$('fStake'):$('fOdds')).focus(); };
 }
 
 /* ---------- API-Football + weather ---------- */
@@ -538,6 +682,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab
 $('loadBtn').onclick=()=>loadOdds(false);
 $('sportSel').onchange=()=>{st.sportKey=$('sportSel').value;store('lastSport',st.sportKey);st.sel=null;const c=load('ev_'+st.sportKey,null);if(c&&Date.now()-c.t<2*3600e3){processEvents(c.data);setStatus('Showing odds loaded '+ago(c.t)+'.'+creditsNote())}else{st.events=[];renderList();setStatus('Press "Load odds" to fetch this competition.')}};
 $('valueOnly').onchange=e=>{st.valueOnly=e.target.checked;renderList()};
+$('sortSel').value=load('sort','safe'); $('sortSel').onchange=()=>{store('sort',$('sortSel').value);renderList()};
 if(!st.oddsKey){ showTab('settings'); $('keyStatus').textContent='Start here: paste your two API keys and press "Save and test keys".'; }
 loadSports();
 </script>
